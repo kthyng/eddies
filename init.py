@@ -111,16 +111,19 @@ def init(date, loc, grid=None):
     r = netCDF.Dataset('TXLA_river_4dyes_2011.nc')
 
     # rho grid index for river starting locations, Miss and Atch, xi and eta directions
-    xi = r.variables['river_Xposition'][:51] 
-    eta = r.variables['river_Eposition'][:51] 
+    # go up to 50 only because 51 is on land
+    idrift = 50
+    xi = r.variables['river_Xposition'][:idrift] 
+    eta = r.variables['river_Eposition'][:idrift] 
 
     # river direction: 0 is east-west and 1 is north-south
-    rdir = r.variables['river_direction'][:51]
+    rdir = r.variables['river_direction'][:idrift]
 
     # river discharge rate and time
-    Q = r.variables['river_transport'][:,:51]
+    Q = r.variables['river_transport'][:,:idrift]
     rt = r.variables['river_time'][:] # daily
     runits = 'days since 1970-01-01'
+    rdates = netCDF.num2date(rt, runits)
 
     # Starting positions will be at the center of the grid cell wall where the river is input
     # which is determined by the starting grid cell (xi, eta) then the direction (rdir), then 
@@ -147,17 +150,29 @@ def init(date, loc, grid=None):
 
     ## Determine how many drifters to start based on the size of the transport at the start time ##
 
-    # Find index in river time
-    rind = find(netCDF.num2date(rt, runits)==date) # startdate should exactly equal a river time
+    # For this part, linearly interpolate the discharge rate data between outputs to the model
+    # output timing, every 4 hours, so it can be selected by index easily
+    im = find(rdates>=date)[0]-1 # index to the left
+    ip = im + 1
+    # interpolation weighting (from right)
+    rintp = (netCDF.date2num(date, units)-netCDF.date2num(rdates[im], units))/ \
+            (netCDF.date2num(rdates[ip], units)-netCDF.date2num(rdates[im], units))
+    rintm = 1-rintp
+    Qinterp = Q[im,:]*rintm + Q[ip,:]*rintp
+
+    # Qinterp = np.interp(netCDF.date2num(date, units), netCDF.date2num(rdates, units), Q)
+    # # Find index in river time
+    # rind = find(netCDF.num2date(rt, runits)==date) # startdate should exactly equal a river time
     # find ndrifters based on the transports at that time for all rivers
-    ndrifters = abs(np.round(Q[rind,:]/5)[0])
+    # ndrifters = abs(np.round(Q[rind,:]/5)[0])
+    ndrifters = abs(np.round(Qinterp/5)) # 5 m^3/s per drifter
 
     # make ndrifters number for each starting location
     lon0 = []; lat0 = []; T0 = []
     for iloc in xrange(ndrifters.size):
         lon0.extend(np.ones(ndrifters[iloc])*lon0temp[iloc])
         lat0.extend(np.ones(ndrifters[iloc])*lat0temp[iloc])
-        T0.extend(np.ones(ndrifters[iloc])*(Q[rind,iloc]/ndrifters[iloc]))
+        T0.extend(np.ones(ndrifters[iloc])*(Qinterp[iloc]/ndrifters[iloc]))
 
     # surface drifters
     z0 = 's'  
@@ -172,8 +187,6 @@ def init(date, loc, grid=None):
 
     U = np.ma.zeros(grid['xu'].shape,order='F')
     V = np.ma.zeros(grid['xv'].shape,order='F')
-
-
 
     return nsteps, N, ndays, ff, tseas, ah, av, lon0, lat0, \
             z0, zpar, do3d, doturb, grid, dostream, np.asarray(T0), np.asarray(U), np.asarray(V)

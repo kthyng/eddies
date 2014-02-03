@@ -25,10 +25,10 @@ def run():
     loc = 'http://barataria.tamu.edu:8080/thredds/dodsC/NcML/txla_nesting6.nc'
     grid = tracpy.inout.readgrid(loc)
 
-    overallstartdate = datetime(2007, 5, 1, 12, 1)
-    overallstopdate = datetime(2007, 9, 1, 12, 1)
-    # overallstartdate = datetime(2008, 5, 1, 12, 1)
-    # overallstopdate = datetime(2008, 9, 1, 12, 1)
+    # overallstartdate = datetime(2007, 5, 1, 12, 1)
+    # overallstopdate = datetime(2007, 9, 1, 12, 1)
+    overallstartdate = datetime(2008, 5, 1, 12, 1)
+    overallstopdate = datetime(2008, 9, 1, 12, 1)
 
     date = overallstartdate
 
@@ -70,7 +70,7 @@ def run():
 
         # Increment by 24 hours for next loop, to move through more quickly
         # nh = nh + 24
-        date = date + timedelta(hours=24)
+        date = date + timedelta(hours=4)
 
     # # Do transport plot
     # tracpy.plotting.transport(name='all_f/N=5_dx=8/25days', fmod=startdate.isoformat()[0:7] + '*', 
