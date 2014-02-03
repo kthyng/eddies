@@ -27,6 +27,8 @@ def run():
 
     overallstartdate = datetime(2007, 5, 1, 12, 1)
     overallstopdate = datetime(2007, 9, 1, 12, 1)
+    # overallstartdate = datetime(2008, 5, 1, 12, 1)
+    # overallstopdate = datetime(2008, 9, 1, 12, 1)
 
     date = overallstartdate
 
@@ -42,14 +44,14 @@ def run():
 
             # Read in simulation initialization
             nstep, N, ndays, ff, tseas, ah, av, lon0, lat0, z0, zpar, do3d, doturb, \
-                    grid, dostream = init.init(date, loc, grid=grid)
+                    grid, dostream, T0, U, V = init.init(date, loc, grid=grid)
             # pdb.set_trace()
             # Run tracpy
             # Save directly to grid coordinates
-            lonp, latp, zp, t, grid \
+            lonp, latp, zp, t, grid, T0, U, V \
                 = tracpy.run.run(loc, nstep, ndays, ff, date, tseas, ah, av, \
                                     lon0, lat0, z0, zpar, do3d, doturb, name, N=N,  \
-                                    grid=grid, dostream=dostream, savell=False)
+                                    grid=grid, dostream=dostream, T0=T0, U=U, V=V, savell=False)
 
         # # If basic figures don't exist, make them
         # if not os.path.exists('figures/' + name + '*.png'):

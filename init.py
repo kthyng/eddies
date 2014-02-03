@@ -130,42 +130,34 @@ def init(date, loc, grid=None):
     # if east-west and negative, subtract 1 in the east-west direction to put at left cell edge on u grid
     # subtract 0.5 to put north-south in the middle of the cell on vgrid
     ind = (rdir==0)*(np.sign(Q[0,:])==-1) # Q stays the same sign for each locations
-    xstart0[ind] = xstart0 - 1
-    ystart0[ind] = ystart0 - 0.5
+    xstart0[ind] = xstart0[ind] - 1
+    ystart0[ind] = ystart0[ind] - 0.5
     # if east-west and positive. rho grid index is the same as the right side u grid index
     ind = (rdir==0)*(np.sign(Q[0,:])==1)
-    ystart0[ind] = ystart0 - 0.5
+    ystart0[ind] = ystart0[ind] - 0.5
     # north-south and negative
     ind = (rdir==1)*(np.sign(Q[0,:])==-1)
-    xstart0[ind] = xstart0 - 0.5
-    ystart0[ind] = ystart0 - 1
+    xstart0[ind] = xstart0[ind] - 0.5
+    ystart0[ind] = ystart0[ind] - 1
     # north-south and positive
     ind = (rdir==1)*(np.sign(Q[0,:])==1)
-    xstart0[ind] = xstart0 - 0.5
+    xstart0[ind] = xstart0[ind] - 0.5
     # Change to lat/lon
-    lon0, lat0, _ = tracpy.tools.interpolate2d(xstart0, ystart0, grid, 'm_ij2ll')
+    lon0temp, lat0temp, _ = tracpy.tools.interpolate2d(xstart0, ystart0, grid, 'm_ij2ll')
 
     ## Determine how many drifters to start based on the size of the transport at the start time ##
 
     # Find index in river time
     rind = find(netCDF.num2date(rt, runits)==date) # startdate should exactly equal a river time
     # find ndrifters based on the transports at that time for all rivers
-    pdb.set_trace()
-    ndrifters = Q[rind,:]
+    ndrifters = abs(np.round(Q[rind,:]/5)[0])
 
-
-
-    # # Start uniform array of drifters across domain using x,y coords
-    # dx = 1000 # initial separation distance of drifters, in meters, from sensitivity project
-    # llcrnrlon = grid['lonr'].min(); urcrnrlon = grid['lonr'].max(); 
-    # llcrnrlat = grid['latr'].min(); urcrnrlat = grid['latr'].max(); 
-    # xcrnrs, ycrnrs = grid['basemap']([llcrnrlon, urcrnrlon], [llcrnrlat, urcrnrlat])
-    # X, Y = np.meshgrid(np.arange(xcrnrs[0], xcrnrs[1], dx), np.arange(ycrnrs[0], ycrnrs[1], dx))
-
-    # lon0, lat0 = grid['basemap'](X, Y, inverse=True)
-
-    # # Eliminate points that are outside domain or in masked areas
-    # lon0, lat0 = tracpy.tools.check_points(lon0, lat0, grid)
+    # make ndrifters number for each starting location
+    lon0 = []; lat0 = []; T0 = []
+    for iloc in xrange(ndrifters.size):
+        lon0.extend(np.ones(ndrifters[iloc])*lon0temp[iloc])
+        lat0.extend(np.ones(ndrifters[iloc])*lat0temp[iloc])
+        T0.extend(np.ones(ndrifters[iloc])*(Q[rind,iloc]/ndrifters[iloc]))
 
     # surface drifters
     z0 = 's'  
@@ -176,7 +168,12 @@ def init(date, loc, grid=None):
     doturb = 2
 
     # Flag for streamlines. All the extra steps right after this are for streamlines.
-    dostream = 0
+    dostream = 1
+
+    U = np.ma.zeros(grid['xu'].shape,order='F')
+    V = np.ma.zeros(grid['xv'].shape,order='F')
+
+
 
     return nsteps, N, ndays, ff, tseas, ah, av, lon0, lat0, \
-            z0, zpar, do3d, doturb, grid, dostream
+            z0, zpar, do3d, doturb, grid, dostream, np.asarray(T0), np.asarray(U), np.asarray(V)
