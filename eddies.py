@@ -25,10 +25,10 @@ def run():
     loc = 'http://barataria.tamu.edu:8080/thredds/dodsC/NcML/txla_nesting6.nc'
     grid = tracpy.inout.readgrid(loc)
 
-    # overallstartdate = datetime(2007, 5, 1, 12, 1)
-    # overallstopdate = datetime(2007, 9, 1, 12, 1)
-    overallstartdate = datetime(2008, 5, 1, 12, 1)
-    overallstopdate = datetime(2008, 9, 1, 12, 1)
+    overallstartdate = datetime(2007, 5, 1, 12, 1)
+    overallstopdate = datetime(2007, 6, 1, 12, 1)
+    # overallstartdate = datetime(2008, 8, 1, 12, 1)
+    # overallstopdate = datetime(2008, 9, 1, 12, 1)
 
     date = overallstartdate
 
