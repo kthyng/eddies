@@ -2,8 +2,9 @@
 PONG colormaps.
 
 To run and then test:
+
 levels = (37-exp(linspace(0,log(36.), 10)))[::-1]-1
-my_cmap = cm_pong('YlGnBu', levels)
+my_cmap = cm_pong.salinity('YlGnBu', levels)
 ilevels = [0,1,2,3,4,5,8] # which levels to label
 ticks = [int(tick) for tick in levels[ilevels]]
 cm_pong.test_txla(my_cmap, ticks)
@@ -79,7 +80,7 @@ def test_simple(cmap):
     pcolor(rand(10,10), cmap=cmap)
     cb = colorbar()
 
-def test_txla(cmap, ticks):
+def test_txla(my_cmap, ticks):
     '''
     Test colormap with TXLA model output
     Inputs:
@@ -146,4 +147,4 @@ def test_txla(cmap, ticks):
     cb.set_ticks(labels)
     cb.set_ticklabels(labels)
 
-    fig.savefig('figures/test_log_loglabels.png', bbox_inches='tight')
+    fig.savefig('figures/test.png', bbox_inches='tight')
