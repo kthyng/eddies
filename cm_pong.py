@@ -3,11 +3,11 @@ PONG colormaps.
 
 To run and then test:
 
-levels = (37-exp(linspace(0,log(36.), 10)))[::-1]-1
-my_cmap = cm_pong.salinity('YlGnBu', levels)
-ilevels = [0,1,2,3,4,5,8] # which levels to label
-ticks = [int(tick) for tick in levels[ilevels]]
-cm_pong.test_txla(my_cmap, ticks)
+> levels = (37-exp(linspace(0,log(36.), 10)))[::-1]-1
+> my_cmap = cm_pong.salinity('YlGnBu', levels)
+> ilevels = [0,1,2,3,4,5,8] # which levels to label
+> ticks = [int(tick) for tick in levels[ilevels]]
+> cm_pong.test_txla(my_cmap, ticks)
 '''
 
 import numpy as np
