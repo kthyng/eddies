@@ -1,5 +1,12 @@
 '''
 PONG colormaps.
+
+To run and then test:
+levels = (37-exp(linspace(0,log(36.), 10)))[::-1]-1
+my_cmap = cm_pong('YlGnBu', levels)
+ilevels = [0,1,2,3,4,5,8] # which levels to label
+ticks = [int(tick) for tick in levels[ilevels]]
+cm_pong.test_txla(my_cmap, ticks)
 '''
 
 import numpy as np
@@ -72,9 +79,12 @@ def test_simple(cmap):
     pcolor(rand(10,10), cmap=cmap)
     cb = colorbar()
 
-def test_txla(cmap, levels, labels):
+def test_txla(cmap, ticks):
     '''
     Test colormap with TXLA model output
+    Inputs:
+        cmap    Your colormap instance
+        labels  Tick locations and labels for colorbar.
     '''
 
     # Model output to use
@@ -132,11 +142,8 @@ def test_txla(cmap, levels, labels):
     cb.set_label('Surface salinity [g$\cdot$kg$^{-1}$]', fontsize=20)
     cb.ax.tick_params(labelsize=18) 
 
-    # Label at cut-offs specifically, but have to skip some
-    # probably need a good way to do this
-    ilevels = [0,1,2,3,4,5,8] # which levels to label
-    ticks = [int(tick) for tick in levels[ilevels]]
-    cb.set_ticks(ticks)
-    cb.set_ticklabels(ticks)
+    # Label colorbar at stretched intervals
+    cb.set_ticks(labels)
+    cb.set_ticklabels(labels)
 
     fig.savefig('figures/test_log_loglabels.png', bbox_inches='tight')
