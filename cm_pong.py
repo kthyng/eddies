@@ -144,7 +144,7 @@ def test_txla(my_cmap, ticks):
     cb.ax.tick_params(labelsize=18) 
 
     # Label colorbar at stretched intervals
-    cb.set_ticks(labels)
-    cb.set_ticklabels(labels)
+    cb.set_ticks(ticks)
+    cb.set_ticklabels(ticks)
 
     fig.savefig('figures/test.png', bbox_inches='tight')
