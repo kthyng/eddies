@@ -88,7 +88,7 @@ def init(date, loc, grid=None):
     N = 5
 
     # Number of days
-    ndays = 30*4
+    ndays = 30*3
 
     # This is a forward-moving simulation
     ff = 1 
@@ -113,40 +113,55 @@ def init(date, loc, grid=None):
     # rho grid index for river starting locations, Miss and Atch, xi and eta directions
     # go up to 50 only because 51 is on land
     idrift = 50
-    xi = r.variables['river_Xposition'][:idrift] 
-    eta = r.variables['river_Eposition'][:idrift] 
+    xi = r.variables['river_Xposition'][:idrift].astype(int)
+    eta = r.variables['river_Eposition'][:idrift].astype(int)
 
     # river direction: 0 is east-west and 1 is north-south
     rdir = r.variables['river_direction'][:idrift]
 
     # river discharge rate and time
     Q = r.variables['river_transport'][:,:idrift]
+    Vshape = r.variables['river_Vshape'][-1,:idrift] # only take surface transport (-1)
+    Q = Q*Vshape # river transport from surface layer only
     rt = r.variables['river_time'][:] # daily
     runits = 'days since 1970-01-01'
     rdates = netCDF.num2date(rt, runits)
+    r.close()
 
-    # Starting positions will be at the center of the grid cell wall where the river is input
+    # Starting positions are at grid cell walls
     # which is determined by the starting grid cell (xi, eta) then the direction (rdir), then 
     # whether it is positive or negative (positive is east/north)
     # position should be rho - 0.5 to get onto the cell wall
-    xstart0 = xi.copy(); ystart0 = eta.copy() # at rho points
-    # if east-west and negative, subtract 1 in the east-west direction to put at left cell edge on u grid
-    # subtract 0.5 to put north-south in the middle of the cell on vgrid
-    ind = (rdir==0)*(np.sign(Q[0,:])==-1) # Q stays the same sign for each locations
-    xstart0[ind] = xstart0[ind] - 1
-    ystart0[ind] = ystart0[ind] - 0.5
-    # if east-west and positive. rho grid index is the same as the right side u grid index
-    ind = (rdir==0)*(np.sign(Q[0,:])==1)
-    ystart0[ind] = ystart0[ind] - 0.5
-    # north-south and negative
-    ind = (rdir==1)*(np.sign(Q[0,:])==-1)
-    xstart0[ind] = xstart0[ind] - 0.5
-    ystart0[ind] = ystart0[ind] - 1
-    # north-south and positive
-    ind = (rdir==1)*(np.sign(Q[0,:])==1)
-    xstart0[ind] = xstart0[ind] - 0.5
+    xstart0 = np.zeros(xi.shape)
+    ystart0 = np.zeros(xi.shape)
+
+    iu = find(rdir==0) # then the xi/eta points are u grid-referencing
+    iv = find(rdir==1) # then the xi/eta points are v grid-referencing
+
+    # The east-west forcings are referenced to u grid, and in the x-direction should be shifted
+    # by one to get indexing right
+    # pdb.set_trace()
+    xstart0[iu] = grid['xu'][xi[iu]-1,eta[iu]]
+    ystart0[iu] = grid['yu'][xi[iu]-1,eta[iu]]
+
+    # The north-south forcings are referenced to v grid and in the y direction should be shifted
+    # by one
+    xstart0[iv] = grid['xv'][xi[iv],eta[iv]-1]
+    ystart0[iv] = grid['yv'][xi[iv],eta[iv]-1]
+
+    # Do some manual shifting slightly more into cell to avoid getting masked out
+    # west side of miss delta
+    xstart0[:11] = xstart0[:11]-10 # shift due west 10 meters
+    # south side of delta
+    ystart0[11:24] = ystart0[11:24]-10 # shift due south 10 meters
+    # east side of delta
+    xstart0[24:43] = xstart0[24:43]+10 # shift due east 10 meters
+    # atchafalaya
+    ystart0[43:] = ystart0[43:]-10 # shift due south 10 meters
+
     # Change to lat/lon
-    lon0temp, lat0temp, _ = tracpy.tools.interpolate2d(xstart0, ystart0, grid, 'm_ij2ll')
+    lon0temp, lat0temp = grid['basemap'](xstart0, ystart0, inverse=True)
+
 
     ## Determine how many drifters to start based on the size of the transport at the start time ##
 
@@ -165,7 +180,8 @@ def init(date, loc, grid=None):
     # rind = find(netCDF.num2date(rt, runits)==date) # startdate should exactly equal a river time
     # find ndrifters based on the transports at that time for all rivers
     # ndrifters = abs(np.round(Q[rind,:]/5)[0])
-    ndrifters = abs(np.round(Qinterp/5)) # 5 m^3/s per drifter
+    T0max = abs(Q).min()
+    ndrifters = abs(np.round(Qinterp/T0max)) # about 3 m^3/s per drifter
 
     # make ndrifters number for each starting location
     lon0 = []; lat0 = []; T0 = []
