@@ -51,7 +51,7 @@ months = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December']
 
 # Colormap for model output
-levels = (37-np.exp(linspace(0,np.log(36.), 10)))[::-1]-1 # log for salinity
+levels = (37-np.exp(np.linspace(0,np.log(36.), 10)))[::-1]-1 # log for salinity
 cmap = cm_pong.salinity('YlGnBu', levels)
 ilevels = [0,1,2,3,4,5,8] # which levels to label
 ticks = [int(tick) for tick in levels[ilevels]] # plot ticks
@@ -69,7 +69,7 @@ ticks = [int(tick) for tick in levels[ilevels]] # plot ticks
 
 
 # Loop through times that simulations were started
-for t in ts[:10]:
+for t in ts[:29]:
 
     # Set up before plotting
 
@@ -105,7 +105,7 @@ for t in ts[:10]:
     # Date
     date = str(dates[itmodel].year) + ' ' + months[dates[itmodel].month-1] \
          + ' ' + str(dates[itmodel].day) + ' ' + str(dates[itmodel].hour).zfill(2) + ':00'
-    text(0.75, 0.02, date, fontsize=24, color='0.2', transform=ax.transAxes)
+    ax.text(0.75, 0.02, date, fontsize=24, color='0.2', transform=ax.transAxes)
 
     # Plot surface salinity
     salt = np.squeeze(m.variables['salt'][itmodel,-1,:,:])
@@ -114,7 +114,7 @@ for t in ts[:10]:
 
     # Colorbar in upper left corner
     cax = fig.add_axes([0.15, 0.75, 0.3, 0.03]) #colorbar axes
-    cb = colorbar(mappable, cax=cax, orientation='horizontal')
+    cb = fig.colorbar(mappable, cax=cax, orientation='horizontal')
     cb.set_label('Surface salinity [g$\cdot$kg$^{-1}$]', fontsize=20)
     cb.ax.tick_params(labelsize=18) 
     cb.set_ticks(ticks)
