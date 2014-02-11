@@ -32,27 +32,26 @@ mpl.rcParams['mathtext.fallback_to_cm'] = 'True'
 loc = 'http://barataria.tamu.edu:8080/thredds/dodsC/NcML/txla_nesting6.nc'
 grid = tracpy.inout.readgrid(loc, llcrnrlat=27.01, 
         urcrnrlat=30.5, llcrnrlon=-97.8, urcrnrlon=-87.7)
-xr = np.asanyarray(grid['xr'].T, order='C')
-yr = np.asanyarray(grid['yr'].T, order='C')
+# actually using psi grid here despite the name
+xr = np.asanyarray(grid['xpsi'].T, order='C')
+yr = np.asanyarray(grid['ypsi'].T, order='C')
 
 ## Model output ##
 m = netCDF.Dataset(loc)
 
 # Model time period to use
 units = m.variables['ocean_time'].units
-year = 2007
+year = 2008
 starttime = netCDF.date2num(datetime(year, 5, 1, 12, 0, 0), units)
 endtime = netCDF.date2num(datetime(year, 9, 1, 12, 0, 0), units)
 dt = m.variables['ocean_time'][1] - m.variables['ocean_time'][0] # 4 hours in seconds
 ts = np.arange(starttime, endtime, dt)
 itshift = find(starttime==m.variables['ocean_time'][:]) # shift to get to the right place in model output
 dates = netCDF.num2date(m.variables['ocean_time'][:], units)
-months = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December']
 
 # Colormap for model output
 levels = (37-np.exp(np.linspace(0,np.log(36.), 10)))[::-1]-1 # log for salinity
-cmap = cm_pong.salinity('YlGnBu', levels)
+cmap = cm_pong.salinity('YlGnBu_r', levels)
 ilevels = [0,1,2,3,4,5,8] # which levels to label
 ticks = [int(tick) for tick in levels[ilevels]] # plot ticks
 ##
@@ -69,12 +68,9 @@ ticks = [int(tick) for tick in levels[ilevels]] # plot ticks
 
 
 # Loop through times that simulations were started
-for t in ts[:29]:
+for t in ts:
 
     # Set up before plotting
-
-    x14 = []; y14 = []; x7 = []; y7 = []; x = []; y = []
-
     itmodel = find(t==m.variables['ocean_time'][:])[0] # index for model output at this time
 
     ## Drifter file set up ##
@@ -103,19 +99,38 @@ for t in ts[:29]:
     tracpy.plotting.background(grid=grid, ax=ax, outline=False)
 
     # Date
-    date = str(dates[itmodel].year) + ' ' + months[dates[itmodel].month-1] \
-         + ' ' + str(dates[itmodel].day) + ' ' + str(dates[itmodel].hour).zfill(2) + ':00'
-    ax.text(0.75, 0.02, date, fontsize=24, color='0.2', transform=ax.transAxes)
+    date = dates[itmodel].strftime('%Y %b %02d %H:%M')
+    # date = str(dates[itmodel].year) + ' ' + months[dates[itmodel].month-1] \
+    #      + ' ' + str(dates[itmodel].day) + ' ' + str(dates[itmodel].hour).zfill(2) + ':00'
+    ax.text(0.735, 0.04, date, fontsize=24, color='0.2', transform=ax.transAxes, 
+                bbox=dict(facecolor='white', edgecolor='white', boxstyle='round'))
 
     # Plot surface salinity
-    salt = np.squeeze(m.variables['salt'][itmodel,-1,:,:])
+    # Note: skip ghost cells in x and y so that can properly plot grid cell boxes with pcolormesh
+    salt = np.squeeze(m.variables['salt'][itmodel,-1,1:-1,1:-1])
     # ax.contour(xr, yr, salt, [33], colors='k')
-    mappable = ax.pcolormesh(xr, yr, salt, cmap=cmap, vmin=0, vmax=35)
+    mappable = ax.pcolormesh(xr, yr, salt, cmap=cmap, vmin=0, vmax=36)
+    # Plot Sabine too, which gets covered by the basemap
+    sabmask = ~salt[172:189,332:341].mask.astype(bool)
+    sabmask[3,2] = False
+    sabmask[3,3] = False
+    sabmask[4,1] = False
+    sabmask[4,2] = False
+    sabmask[5,0] = False
+    sabmask[5,1] = False
+    sabmask[6,0] = False
+    sabmask[4,7] = False
+    sabmask[8:14,4] = False
+    sabmask[15,7] = False
+    sabmask[16,7] = False
+    sabmask[3:5,5:7] = False
+    salt[172:189,332:341] = np.ma.masked_where(~sabmask,salt[172:189,332:341])
+    ax.pcolormesh(xr[172:189,332:341], yr[172:189,332:341], salt[172:189,332:341], cmap=cmap, vmin=0, vmax=36, zorder=2)
 
     # Colorbar in upper left corner
     cax = fig.add_axes([0.15, 0.75, 0.3, 0.03]) #colorbar axes
     cb = fig.colorbar(mappable, cax=cax, orientation='horizontal')
-    cb.set_label('Surface salinity [g$\cdot$kg$^{-1}$]', fontsize=20)
+    cb.set_label('Surface salinity [psu]', fontsize=20)
     cb.ax.tick_params(labelsize=18) 
     cb.set_ticks(ticks)
 
@@ -134,31 +149,20 @@ for t in ts[:29]:
         days = (tg-tg[0])/(3600.*24)
 
         # Change to projected drifter locations now
-        nanind = np.isnan(xg)*(xg==-1) # indices where nans are location in xg, yg; for reinstitution of nans
+        # indices where nans are location in xg, yg; for reinstitution of nans; also where grid points go to -1 before naning
+        # also within 5 grid cells of the numerical boundary where the sponge layer is
+        # pdb.set_trace()
+        nanind = np.isnan(xg) + (xg==-1) + (np.ceil(xg)<=5) + (np.ceil(xg)>=grid['xr'].shape[0]-5) + (np.ceil(yg)<=5)
         xp, yp, _ = tracpy.tools.interpolate2d(xg, yg, grid, 'm_ij2xy') 
         xp[nanind] = np.nan; yp[nanind] = np.nan
         del(xg,yg) # don't need grid info anymore
 
-        # Plot drifter tails for 7 days one color, 14 days another lighter color (find indices)
-        # these are 0 if enough time hasn't passed, so works either way
-        i7 = find(days>days[itdrifter]-7)[0]
-        i14 = find(days>days[itdrifter]-14)[0]
+        # Plot drifter tails for 3 days
+        i3 = find(days>days[itdrifter]-3)[0]
 
-        # Save drifter info and plot all at once so things don't overlap
-        x14.append(xp[:,i14:itdrifter+1].T)
-        y14.append(yp[:,i14:itdrifter+1].T)
-        x7.append(xp[:,i7:itdrifter+1].T)
-        y7.append(yp[:,i7:itdrifter+1].T)
-        x.append(xp[:,itdrifter])
-        y.append(yp[:,itdrifter])
+        # Mississippi
+        ax.plot(xp[:,i3:itdrifter+1].T, yp[:,i3:itdrifter+1].T, '-', color='0.5', zorder=2, linewidth=.01)
+        ax.plot(xp[:,itdrifter], yp[:,itdrifter], '.', color='0.3', alpha=0.5, zorder=3, markersize=0.75)
 
-    # Plot drifters
-    for i in xrange(len(x14)):
-        ax.plot(x14[i], y14[i], '-', color='0.7', zorder=7, linewidth=1, alpha=0.5)
-    for i in xrange(len(x14)):
-        ax.plot(x7[i], y7[i], '-', color='0.5', zorder=7, linewidth=2, alpha=0.7)
-    for i in xrange(len(x14)):
-        ax.plot(x[i], y[i], 'o', color='0.3', zorder=7)
-
-    plt.savefig(figname, bbox_inches='tight', dpi=150)
+    plt.savefig(figname, bbox_inches='tight', dpi=100)
     plt.close(fig)
