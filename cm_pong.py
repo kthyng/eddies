@@ -29,7 +29,7 @@ mpl.rcParams['mathtext.bf'] = 'sans:bold'
 mpl.rcParams['mathtext.sf'] = 'sans'
 mpl.rcParams['mathtext.fallback_to_cm'] = 'True'
 
-def salinity(cmap, levels):
+def salinity(cmap='YlGnBu_r', levels=(37-exp(linspace(0,log(36.), 10)))[::-1]-1):
     '''
     Colormap for salinity, with bigger chunks of salinity per color
     section at lower salinity than higher.
@@ -135,7 +135,7 @@ def test_txla(my_cmap, ticks):
 
     # Plot surface salinity
     ax.contour(xr, yr, salt, [33], colors='k')
-    mappable = ax.pcolormesh(xr, yr, salt, cmap=my_cmap, vmin=0, vmax=35)
+    mappable = ax.pcolormesh(xr, yr, salt, cmap=my_cmap, vmin=0, vmax=36)
 
     # Colorbar in upper left corner
     cax = fig.add_axes([0.15, 0.75, 0.3, 0.03]) #colorbar axes
