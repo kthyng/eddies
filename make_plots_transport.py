@@ -16,7 +16,7 @@ import glob
 import op
 
 # mpl.rcParams['text.usetex'] = True
-mpl.rcParams.update({'font.size': 26})
+mpl.rcParams.update({'font.size': 24})
 mpl.rcParams['font.sans-serif'] = 'Arev Sans, Bitstream Vera Sans, Lucida Grande, Verdana, Geneva, Lucid, Helvetica, Avant Garde, sans-serif'
 mpl.rcParams['mathtext.fontset'] = 'custom'
 mpl.rcParams['mathtext.cal'] = 'cursive'
@@ -35,33 +35,79 @@ grid = tracpy.inout.readgrid(loc, llcrnrlat=27.01,
 xr = grid['xpsi']
 yr = grid['ypsi']
 
+# modifiers for pulling in files in order
+fmods = ['2007-05', '2008-05', '2007-06', '2008-06',
+		'2007-07', '2008-07', '2007-08', '2008-08']
 
-## Read in transport info ##
-Files = glob.glob('tracks/2007-05-*')
-U = 0; V = 0
-for File in Files:
-	d = netCDF.Dataset(File)
-	U += d.variables['U'][:]
-	V += d.variables['V'][:]
-	d.close
+S = []
+Smax = 0
+
+for i,fmod in enumerate(fmods):
+
+	## Read in transport info ##
+	Files = glob.glob('tracks/' + fmod + '-*')
+
+	U = 0; V = 0
+	for File in Files:
+		d = netCDF.Dataset(File)
+		U += d.variables['U'][:]
+		V += d.variables['V'][:]
+		d.close
+
+	# S is at cell centers, minus ghost points
+	Stemp = np.sqrt(op.resize(U[:,1:-1],0)**2 + op.resize(V[1:-1,:],1)**2)
+	S.append(Stemp)
+
+	Smax = max((Smax,Stemp.max()))
 
 
-## Do plot ##
-fig = plt.figure(figsize=(17,9))
-ax = fig.add_subplot(111)
-tracpy.plotting.background(grid=grid, ax=ax)
 
-# S is at cell centers, minus ghost points
-S = np.sqrt(op.resize(U[:,1:-1],0)**2 + op.resize(V[1:-1,:],1)**2)
-mappable = ax.pcolormesh(xr, yr, S/S.max(), cmap='Blues', vmax=0.1)
+## Plot ##
+fig = plt.figure(figsize=(17,15))
+
+for i in xrange(len(S)):
+	ax = fig.add_subplot(4,2,i+1)
+
+	if i==0:
+		ax.set_title('2007')
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0])
+
+	elif i==1:
+		ax.set_title('2008')
+		ax.yaxis.set_label_position("right")
+		ax.set_ylabel('May')
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0], parslabels=[0,0,0,0])
+
+	if i==2:
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0])
+
+	elif i==3:
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0], parslabels=[0,0,0,0])
+		ax.yaxis.set_label_position("right")
+		ax.set_ylabel('June')
+
+	elif i==4:
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0])
+
+	elif i==5:
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), parslabels=[0,0,0,0], merslabels=[0,0,0,0])
+		ax.yaxis.set_label_position("right")
+		ax.set_ylabel('July')
+
+	elif i==6:
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2))
+
+	elif i==7:
+		tracpy.plotting.background(grid=grid, ax=ax, parslabels=[0,0,0,0], mers=np.arange(-100, -80, 2))
+		ax.yaxis.set_label_position("right")
+		ax.set_ylabel('August')
+
+	mappable = ax.pcolormesh(xr, yr, S[i]/Smax, cmap='Blues', vmax=0.1)
 
 # Colorbar in upper left corner
-cax = fig.add_axes([0.15, 0.75, 0.3, 0.03]) #colorbar axes
+cax = fig.add_axes([0.25, 0.05, 0.5, 0.02]) #colorbar axes
 cb = fig.colorbar(mappable, cax=cax, orientation='horizontal')
-cb.set_label('Surface transport', fontsize=20)
-cb.ax.tick_params(labelsize=18) 
-# cb.set_ticks(ticks)
+cb.set_label('Surface transport', fontsize=24)
+cb.ax.tick_params(labelsize=20) 
 
-ax.set_title('2007-05')
-plt.show()
-
+fig.savefig('figures/transport/all.png', bbox_inches='tight', dpi=100)
