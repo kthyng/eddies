@@ -14,9 +14,11 @@ import init
 from datetime import datetime, timedelta
 import glob
 import op
+from matplotlib.colors import LogNorm
+import prettyplotlib as ppl
 
 # mpl.rcParams['text.usetex'] = True
-mpl.rcParams.update({'font.size': 24})
+mpl.rcParams.update({'font.size': 22})
 mpl.rcParams['font.sans-serif'] = 'Arev Sans, Bitstream Vera Sans, Lucida Grande, Verdana, Geneva, Lucid, Helvetica, Avant Garde, sans-serif'
 mpl.rcParams['mathtext.fontset'] = 'custom'
 mpl.rcParams['mathtext.cal'] = 'cursive'
@@ -29,15 +31,14 @@ mpl.rcParams['mathtext.fallback_to_cm'] = 'True'
 
 # Grid info
 loc = 'http://barataria.tamu.edu:8080/thredds/dodsC/NcML/txla_nesting6.nc'
-grid = tracpy.inout.readgrid(loc, llcrnrlat=27.01, 
-        urcrnrlat=30.5, llcrnrlon=-97.8, urcrnrlon=-87.7)
+grid = tracpy.inout.readgrid(loc, llcrnrlat=27.5, urcrnrlat=30.5, llcrnrlon=-93.3, urcrnrlon=-88.3)
 # actually using psi grid here despite the name
 xr = grid['xpsi']
 yr = grid['ypsi']
 
 # modifiers for pulling in files in order
-fmods = ['2007-05', '2008-05', '2007-06', '2008-06',
-		'2007-07', '2008-07', '2007-08', '2008-08']
+fmods = ['2007-05', '2007-06', '2007-07', '2007-08', 
+		'2008-05', '2008-06', '2008-07', '2008-08']
 
 S = []
 Smax = 0
@@ -63,51 +64,49 @@ for i,fmod in enumerate(fmods):
 
 
 ## Plot ##
-fig = plt.figure(figsize=(17,15))
-
+fig = plt.figure(figsize=(22,8))
+fig.suptitle('Surface transport', fontsize=24)
 for i in xrange(len(S)):
-	ax = fig.add_subplot(4,2,i+1)
+	ax = fig.add_subplot(2,4,i+1)
 
 	if i==0:
-		ax.set_title('2007')
+		ax.set_title('May')
 		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0])
 
 	elif i==1:
-		ax.set_title('2008')
-		ax.yaxis.set_label_position("right")
-		ax.set_ylabel('May')
+		ax.set_title('June')
 		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0], parslabels=[0,0,0,0])
 
-	if i==2:
-		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0])
+	elif i==2:
+		ax.set_title('July')
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0], parslabels=[0,0,0,0])
 
 	elif i==3:
+		ax.set_title('August')
 		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0], parslabels=[0,0,0,0])
 		ax.yaxis.set_label_position("right")
-		ax.set_ylabel('June')
+		ax.set_ylabel('2007')
 
 	elif i==4:
-		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), merslabels=[0,0,0,0])
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2))
 
 	elif i==5:
-		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), parslabels=[0,0,0,0], merslabels=[0,0,0,0])
-		ax.yaxis.set_label_position("right")
-		ax.set_ylabel('July')
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), parslabels=[0,0,0,0])
 
 	elif i==6:
-		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2))
+		tracpy.plotting.background(grid=grid, ax=ax, mers=np.arange(-100, -80, 2), parslabels=[0,0,0,0])
 
 	elif i==7:
 		tracpy.plotting.background(grid=grid, ax=ax, parslabels=[0,0,0,0], mers=np.arange(-100, -80, 2))
 		ax.yaxis.set_label_position("right")
-		ax.set_ylabel('August')
+		ax.set_ylabel('2008')
 
-	mappable = ax.pcolormesh(xr, yr, S[i]/Smax, cmap='Blues', vmax=0.1)
+	mappable = ax.pcolormesh(xr, yr, S[i]/Smax, cmap='Blues', vmax=0.09)
 
 # Colorbar in upper left corner
-cax = fig.add_axes([0.25, 0.05, 0.5, 0.02]) #colorbar axes
+cax = fig.add_axes([0.375, 0.5, 0.3, 0.015]) #colorbar axes
 cb = fig.colorbar(mappable, cax=cax, orientation='horizontal')
-cb.set_label('Surface transport', fontsize=24)
-cb.ax.tick_params(labelsize=20) 
+# cb.set_label('Surface transport', fontsize=20)
+cb.ax.tick_params(labelsize=16) 
 
 fig.savefig('figures/transport/all.png', bbox_inches='tight', dpi=100)
