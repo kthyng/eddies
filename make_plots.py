@@ -15,6 +15,10 @@ from datetime import datetime, timedelta
 import glob
 import cm_pong
 from matplotlib.mlab import find
+import etframes
+
+tufte = False
+# tind = 197 #134
 
 # mpl.rcParams['text.usetex'] = True
 mpl.rcParams.update({'font.size': 26})
@@ -42,8 +46,8 @@ m = netCDF.Dataset(loc)
 # Model time period to use
 units = m.variables['ocean_time'].units
 year = 2008
-starttime = netCDF.date2num(datetime(year, 5, 1, 12, 0, 0), units)
-endtime = netCDF.date2num(datetime(year, 9, 1, 12, 0, 0), units)
+starttime = netCDF.date2num(datetime(year, 6, 1, 12, 0, 0), units)
+endtime = netCDF.date2num(datetime(year, 8, 1, 12, 0, 0), units)
 dt = m.variables['ocean_time'][1] - m.variables['ocean_time'][0] # 4 hours in seconds
 ts = np.arange(starttime, endtime, dt)
 itshift = find(starttime==m.variables['ocean_time'][:]) # shift to get to the right place in model output
@@ -96,7 +100,8 @@ for t in ts:
     # Set up plot
     fig = plt.figure(figsize=(17,9))
     ax = fig.add_subplot(111)
-    tracpy.plotting.background(grid=grid, ax=ax, outline=False)
+    # ax.set_frame_on(False) # kind of like it without the box
+    tracpy.plotting.background(grid=grid, ax=ax, outline=False)#, mers=np.arange(-97, -88))
 
     # Date
     date = dates[itmodel].strftime('%Y %b %02d %H:%M')
@@ -134,6 +139,8 @@ for t in ts:
     cb.ax.tick_params(labelsize=18) 
     cb.set_ticks(ticks)
 
+    if tufte:
+        xpsave = []; ypsave = []
     # I think I need to loop to use the right amount of time from each set of drifters
     for j,File in enumerate(Files):
 
@@ -160,9 +167,15 @@ for t in ts:
         # Plot drifter tails for 3 days
         i3 = find(days>days[itdrifter]-3)[0]
 
-        # Mississippi
         ax.plot(xp[:,i3:itdrifter+1].T, yp[:,i3:itdrifter+1].T, '-', color='0.5', zorder=2, linewidth=.01)
         ax.plot(xp[:,itdrifter], yp[:,itdrifter], '.', color='0.3', alpha=0.5, zorder=3, markersize=0.75)
+
+        if tufte:
+            xpsave.extend(xp[:,itdrifter]); ypsave.extend(yp[:,itdrifter])
+
+    # Add Tufte-esque dot-dash if desired, where drifters are currently located
+    if tufte:
+        etframes.add_dot_dash_plot(ax, ys=ypsave, xs=xpsave)
 
     plt.savefig(figname, bbox_inches='tight', dpi=100)
     plt.close(fig)
