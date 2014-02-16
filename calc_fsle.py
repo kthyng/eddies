@@ -105,7 +105,7 @@ def calc_fsle(lonpc, latpc, lonp, latp, tp, alpha=np.sqrt(2)):
                 tau[i] += dt
                 nnans[i] += 1 # counting not-nan entries for averaging later
 
-    return D2, nnans
+    return tau, nnans, Rs
 
 
 def run():
@@ -120,7 +120,7 @@ def run():
 
     for File in Files:
 
-        fname = 'calcs/' + File[:-5].split('/')[-1] + 'D2.npz'
+        fname = 'calcs/' + File[:-5].split('/')[-1] + 'fsle.npz'
 
         if os.path.exists(fname): # don't redo if already done
             continue
@@ -146,8 +146,8 @@ def run():
         iunique = np.sort(iunique)
 
         # Save altogether for a single simulation
-        fsle = np.zeros((iunique.size,lonp.shape[1]))
-        nnans = np.zeros((iunique.size,lonp.shape[1]))
+        fsle = np.zeros((iunique.size, 28))
+        nnans = np.zeros((iunique.size, 28))
 
         for i, istartloc in enumerate(iunique): # loop through the unique starting location indices
 
@@ -158,9 +158,9 @@ def run():
 
             for idrifter in np.arange(istartloc,iendloc-1): # loop through the drifters started here 
 
-                fsletemp, nnanstemp = calc_fsle(lonp[idrifter,:], latp[idrifter,:], 
-                                            lonp[idrifter+1:iendloc,:], latp[idrifter+1:iendloc,:])
-
+                fsletemp, nnanstemp, Rs = calc_fsle(lonp[idrifter,:], latp[idrifter,:], 
+                                            lonp[idrifter+1:iendloc,:], latp[idrifter+1:iendloc,:], tp)
+ 		pdb.set_trace()
                 fsle[i,:] += fsletemp
                 nnans[i,:] += nnanstemp
 
@@ -169,7 +169,7 @@ def run():
 
         # save: fsle in time, averaged over all combinations of drifters starting at
         # a unique river input point for a unique starting time
-        # np.savez(fname, fsle=fsle, nnans=nnans, t=tp)
+        np.savez(fname, fsle=fsle, nnans=nnans, Rs=Rs)
 
 if __name__ == "__main__":
     run()    
