@@ -30,7 +30,7 @@ def get_dist(lon1, lons, lat1, lats):
                                        * np.sin(0.50*(lon1-lons))**2))
     return distance
 
-def fsle(lonpc, latpc, lonp, latp, squared=True, alpha=1.2):
+def calc_fsle(lonpc, latpc, lonp, latp, tp, alpha=np.sqrt(2)):
     '''
     Calculate the relative dispersion of tracks lonp, latp as directly compared with
     the tracks described by lonpc, latpc. The two sets of tracks must start in the same 
@@ -69,28 +69,31 @@ def fsle(lonpc, latpc, lonp, latp, squared=True, alpha=1.2):
     # We know that drifters from the two sets have a one to one correspondence
     dist = get_dist(lonpc, lonp, latpc, latp)
 
-    deltas = np.linspace(0.1, 500, 1000) # km
-    pdb.set_trace()
+    Rs = np.asarray([0.1*alpha**i for i in np.arange(28)])
 
     # Find first time dist>delta and dist>delta*alpha for each delta to
     # then linearly interpolate to find the corresponding time
     # FOR ONE DRIFTER TO START AND ONE DELTA
-    tau = np.zeros(deltas.size)
-    nnans = np.zeros(deltas.size) # not nans
+    tau = np.zeros(Rs.size)
+    nnans = np.zeros(Rs.size) # not nans
     for idrifter in xrange(dist.shape[0]):
     # idrifter = 0
-        # delta = deltas[10]
-        for i, delta in enumerate(deltas):
+        # delta = Rs[10]
+        for i, R in enumerate(Rs):
 
-            if delta<=np.nanmax(dist[idrifter,:]) and delta*alpha<=np.nanmax(dist[idrifter,:]):
+            if R<=np.nanmax(dist[idrifter,:]) \
+                and Rs[i+1]<=np.nanmax(dist[idrifter,:]) \
+                and R>=dist[idrifter,0]:
 
                 # for delta
-                ind = find(dist[idrifter,:]>=delta)[0]
-                time1 = np.interp(delta, dist[idrifter, ind-1:ind+1], tp[ind-1:ind+1])
+                ind = find(dist[idrifter,:]>=R)[0]
+                time1 = np.interp(R, dist[idrifter, ind-1:ind+1], tp[ind-1:ind+1])
+                # print R, dist[idrifter,ind-1:ind+1]
 
                 # for delta*alpha
-                ind = find(dist[idrifter,:]>=delta*alpha)[0]
-                time2 = np.interp(delta*alpha, dist[idrifter, ind-1:ind+1], tp[ind-1:ind+1])
+                ind = find(dist[idrifter,:]>=Rs[i+1])[0]
+                time2 = np.interp(Rs[i+1], dist[idrifter, ind-1:ind+1], tp[ind-1:ind+1])
+                # print Rs[i+1], dist[idrifter,ind-1:ind+1]
 
                 dt = time2-time1
 
@@ -98,21 +101,9 @@ def fsle(lonpc, latpc, lonp, latp, squared=True, alpha=1.2):
                 dt = np.nan
 
             if not np.isnan(dt):
+                # print R, dt
                 tau[i] += dt
                 nnans[i] += 1 # counting not-nan entries for averaging later
-
-
-    # tau = np.zeros(dist.shape)
-    # for i in xrange(dist.shape[0]):
-    #     tau[i,:] = np.interp(delta, dist[i,:], tp)
-
-    # if squared:
-    #     D2 = np.nansum(dist**2, axis=0)
-    # else:
-    #     D2 = np.nansum(dist, axis=0)
-    # nnans = (~np.isnan(dist)).sum(axis=0)
-    # D2 = D2.squeeze()#/nnans # average over all pairs
-    # NOT AVERAGING HERE
 
     return D2, nnans
 
@@ -155,7 +146,7 @@ def run():
         iunique = np.sort(iunique)
 
         # Save altogether for a single simulation
-        D2 = np.zeros((iunique.size,lonp.shape[1]))
+        fsle = np.zeros((iunique.size,lonp.shape[1]))
         nnans = np.zeros((iunique.size,lonp.shape[1]))
 
         for i, istartloc in enumerate(iunique): # loop through the unique starting location indices
@@ -167,18 +158,18 @@ def run():
 
             for idrifter in np.arange(istartloc,iendloc-1): # loop through the drifters started here 
 
-                D2temp, nnanstemp = fsle(lonp[idrifter,:], latp[idrifter,:], 
+                fsletemp, nnanstemp = calc_fsle(lonp[idrifter,:], latp[idrifter,:], 
                                             lonp[idrifter+1:iendloc,:], latp[idrifter+1:iendloc,:])
 
-                D2[i,:] += D2temp
+                fsle[i,:] += fsletemp
                 nnans[i,:] += nnanstemp
 
             # Now average all pairs starting at this unique location
-            D2[i,:] = D2[i,:]/nnans[i,:]
+            fsle[i,:] = fsle[i,:]/nnans[i,:]
 
-        # save: D2 in time, averaged over all combinations of drifters starting at
+        # save: fsle in time, averaged over all combinations of drifters starting at
         # a unique river input point for a unique starting time
-        # np.savez(fname, D2=D2, nnans=nnans, t=tp)
+        # np.savez(fname, fsle=fsle, nnans=nnans, t=tp)
 
 if __name__ == "__main__":
     run()    
