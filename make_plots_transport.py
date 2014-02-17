@@ -18,7 +18,7 @@ from matplotlib.colors import LogNorm
 import prettyplotlib as ppl
 
 # mpl.rcParams['text.usetex'] = True
-mpl.rcParams.update({'font.size': 22})
+mpl.rcParams.update({'font.size': 20})
 mpl.rcParams['font.sans-serif'] = 'Arev Sans, Bitstream Vera Sans, Lucida Grande, Verdana, Geneva, Lucid, Helvetica, Avant Garde, sans-serif'
 mpl.rcParams['mathtext.fontset'] = 'custom'
 mpl.rcParams['mathtext.cal'] = 'cursive'
@@ -31,7 +31,7 @@ mpl.rcParams['mathtext.fallback_to_cm'] = 'True'
 
 # Grid info
 loc = 'http://barataria.tamu.edu:8080/thredds/dodsC/NcML/txla_nesting6.nc'
-grid = tracpy.inout.readgrid(loc, llcrnrlat=27.5, urcrnrlat=30.5, llcrnrlon=-93.3, urcrnrlon=-88.3)
+grid = tracpy.inout.readgrid(loc, llcrnrlat=27.5, urcrnrlat=30.5, llcrnrlon=-93.9, urcrnrlon=-88.6)
 # actually using psi grid here despite the name
 xr = grid['xpsi']
 yr = grid['ypsi']
@@ -64,9 +64,10 @@ for i,fmod in enumerate(fmods):
 
 
 ## Plot ##
-fig = plt.figure(figsize=(22,8))
+fig = plt.figure(figsize=(22,7))
 fig.suptitle('Surface transport', fontsize=24)
 for i in xrange(len(S)):
+
 	ax = fig.add_subplot(2,4,i+1)
 
 	if i==0:
@@ -101,12 +102,21 @@ for i in xrange(len(S)):
 		ax.yaxis.set_label_position("right")
 		ax.set_ylabel('2008')
 
-	mappable = ax.pcolormesh(xr, yr, S[i]/Smax, cmap='Blues', vmax=0.09)
+	C =  np.log(S[i]/Smax)
+	C = np.ma.masked_where(np.isinf(C), C)
+	C = np.ma.masked_where(np.isnan(C), C)
+	mappable = ax.pcolormesh(xr, yr, C, cmap='Blues', vmax=-1.5, vmin=-7)
+	# mappable = ax.pcolormesh(xr, yr, S[i]/Smax, cmap='Blues', vmax=0.09)
 
 # Colorbar in upper left corner
 cax = fig.add_axes([0.375, 0.5, 0.3, 0.015]) #colorbar axes
 cb = fig.colorbar(mappable, cax=cax, orientation='horizontal')
 # cb.set_label('Surface transport', fontsize=20)
 cb.ax.tick_params(labelsize=16) 
+clim = cb.get_clim()
+# cb.set_clim(exp(clim[0]), exp(clim[1]))
+cb.set_ticks(np.linspace(clim[0],clim[1],6))
+cb.set_ticklabels(exp(np.linspace(clim[0],clim[1],6)).round(3))
+# cb.set_ticks(exp(np.linspace(clim[0],clim[1],8)))
 
-fig.savefig('figures/transport/all.png', bbox_inches='tight', dpi=100)
+fig.savefig('figures/transport/all_log.png', bbox_inches='tight', dpi=100)
