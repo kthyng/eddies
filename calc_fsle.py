@@ -148,6 +148,7 @@ def run():
         # Save altogether for a single simulation
         fsle = np.zeros((iunique.size, 28))
         nnans = np.zeros((iunique.size, 28))
+        ntrac = lonp.shape[0] # num drifters
 
         for i, istartloc in enumerate(iunique): # loop through the unique starting location indices
 
@@ -156,20 +157,22 @@ def run():
             else: 
                 iendloc = iunique[i+1]
 
-            for idrifter in np.arange(istartloc,iendloc-1): # loop through the drifters started here 
-
-                fsletemp, nnanstemp, Rs = calc_fsle(lonp[idrifter,:], latp[idrifter,:], 
-                                            lonp[idrifter+1:iendloc,:], latp[idrifter+1:iendloc,:], tp)
- 		pdb.set_trace()
+            for j in xrange(ntrac-1): # loop over drifters
+                # pdb.set_trace()
+                fsletemp, nnanstemp, Rs = calc_fsle(lonp[j,:], latp[j,:], 
+                                            lonp[j+1:iendloc,:], latp[j+1:iendloc,:], tp)
+                # pdb.set_trace()
                 fsle[i,:] += fsletemp
                 nnans[i,:] += nnanstemp
 
-            # Now average all pairs starting at this unique location
-            fsle[i,:] = fsle[i,:]/nnans[i,:]
-
+                # NOT Now average all pairs starting at this unique location
+                # fsle = fsle/nnans
+        pdb.set_trace()
         # save: fsle in time, averaged over all combinations of drifters starting at
         # a unique river input point for a unique starting time
         np.savez(fname, fsle=fsle, nnans=nnans, Rs=Rs)
+
+
 
 if __name__ == "__main__":
     run()    
