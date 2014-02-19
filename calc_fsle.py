@@ -65,45 +65,89 @@ def calc_fsle(lonpc, latpc, lonp, latp, tp, alpha=np.sqrt(2)):
                                      d.variables['lonp'][:], d.variables['latp'][:], d.variables['tp'][:],
                                      squared=True)
     '''
-
     # We know that drifters from the two sets have a one to one correspondence
-    dist = get_dist(lonpc, lonp, latpc, latp)
+    dist = get_dist(lonpc, lonp, latpc, latp) # in km
+    #pdb.set_trace()
+    Rs = np.asarray([0.1*alpha**i for i in np.arange(28)]) # in km
 
-    Rs = np.asarray([0.1*alpha**i for i in np.arange(28)])
+    ntrac = dist.shape[0]
+    nt = dist.shape[1]
 
     # Find first time dist>delta and dist>delta*alpha for each delta to
     # then linearly interpolate to find the corresponding time
-    # FOR ONE DRIFTER TO START AND ONE DELTA
     tau = np.zeros(Rs.size)
     nnans = np.zeros(Rs.size) # not nans
-    for idrifter in xrange(dist.shape[0]):
-    # idrifter = 0
-        # delta = Rs[10]
-        for i, R in enumerate(Rs):
 
-            if R<=np.nanmax(dist[idrifter,:]) \
-                and Rs[i+1]<=np.nanmax(dist[idrifter,:]) \
-                and R>=dist[idrifter,0]:
+    for i, R in enumerate(Rs[:-1]):
 
-                # for delta
-                ind = find(dist[idrifter,:]>=R)[0]
-                time1 = np.interp(R, dist[idrifter, ind-1:ind+1], tp[ind-1:ind+1])
-                # print R, dist[idrifter,ind-1:ind+1]
+        # indices of the first time the info changes from lower than R to higher
+        ind1 = np.diff((dist<=R).astype(int), axis=1).argmin(axis=1)
 
-                # for delta*alpha
-                ind = find(dist[idrifter,:]>=Rs[i+1])[0]
-                time2 = np.interp(Rs[i+1], dist[idrifter, ind-1:ind+1], tp[ind-1:ind+1])
-                # print Rs[i+1], dist[idrifter,ind-1:ind+1]
+        # These contain the indices in dist and tp of the elements below and above R
+        distUse = np.vstack((dist[np.arange(0,ntrac),ind1], dist[np.arange(0,ntrac),ind1+1])).T
+        tp2d = tp[np.newaxis,:].repeat(ntrac, axis=0)
+        tpUse = np.vstack((tp2d[np.arange(0,ntrac),ind1], tp2d[np.arange(0,ntrac),ind1+1])).T
 
-                dt = time2-time1
 
-            else:
-                dt = np.nan
+        # Replace incorrect cases (when zero was chosen by default) with nan's
+        # bad cases: had defaulted to zero, or picked out last index
+        # or: picked out last index before nans
+        # or if dist that is greater than R accidentally got picked out
+        nanind = (distUse[:,1]<distUse[:,0]) \
+                    + (ind1==nt-1) \
+                    + (np.isnan(dist[np.arange(0,ntrac),ind1+1])) \
+                    + (dist[np.arange(0,ntrac),ind1]>R)
+        distUse[nanind,:] = np.nan
+        tpUse[nanind,:] = np.nan
 
-            if not np.isnan(dt):
-                # print R, dt
-                tau[i] += dt
-                nnans[i] += 1 # counting not-nan entries for averaging later
+        # Do linear interpolation by hand because interp won't take in arrays
+        rp = (R-distUse[:,0])/(distUse[:,1] - distUse[:,0]) # weighting for higher side
+        rm = 1 - rp # weighting for lower side
+
+        # now find the interpolation time for each drifter
+        time1 = rm*tpUse[:,0] + rp*tpUse[:,1]
+
+        ## for delta*alpha ##
+
+        # indices of the first time the info changes from lower than R to higher
+        indtemp = np.diff((dist<=Rs[i+1]).astype(int), axis=1)
+        ibad = np.sum(indtemp==-1, axis=1)==0 # when indtemp doesnt change sign, values never below Rs[i+1]
+        ind2 = indtemp.argmin(axis=1)
+        ind2[ibad] = -1 # need to use an integer since int array
+        # pdb.set_trace()
+        while np.sum(ind2[~ibad]<ind1[~ibad])>0: # don't count the -1's
+            iskip = ind2<ind1
+            # indtemp = np.diff((dist<=Rs[i+1]).astype(int), axis=1)
+            indtemp[iskip,ind2[iskip]] = 0
+            ibad = np.sum(indtemp==-1, axis=1)==0 # when indtemp doesnt change sign, values never below Rs[i+1]
+            ind2 = indtemp.argmin(axis=1)
+            ind2[ibad] = -1 # need to use an integer since int array
+
+        # These contain the indices in dist and tp of the elements below and above R
+        distUse = np.vstack((dist[np.arange(0,ntrac),ind2], dist[np.arange(0,ntrac),ind2+1])).T
+        tpUse = np.vstack((tp2d[np.arange(0,ntrac),ind2], tp2d[np.arange(0,ntrac),ind2+1])).T
+
+
+        # Replace incorrect cases (when zero was chosen by default) with nan's
+        # bad cases: had defaulted to zero, or picked out last index
+        # also eliminating when I have already identified drifters that do not go below Rs[i+1]
+        nanind = (distUse[:,1]<distUse[:,0]) + (ind2==-1)
+        distUse[nanind,:] = np.nan
+        tpUse[nanind,:] = np.nan
+
+        # Do linear interpolation by hand because interp won't take in arrays
+        rp = (Rs[i+1]-distUse[:,0])/(distUse[:,1] - distUse[:,0]) # weighting for higher side
+        rm = 1 - rp # weighting for lower side
+
+        # now find the interpolation time for each drifter
+        time2 = rm*tpUse[:,0] + rp*tpUse[:,1]
+
+        dt = time2 - time1 # in seconds
+        dt /= 3600.*24 # in days
+
+        nanind = np.isnan(dt)
+        tau[i] = dt[~nanind].sum()
+        nnans[i] = (~nanind).sum()
 
     return tau, nnans, Rs
 
@@ -157,17 +201,18 @@ def run():
             else: 
                 iendloc = iunique[i+1]
 
-            for j in xrange(ntrac-1): # loop over drifters
+            for j in xrange(iendloc-istartloc-1): # loop over pairs of drifters
+
                 # pdb.set_trace()
                 fsletemp, nnanstemp, Rs = calc_fsle(lonp[j,:], latp[j,:], 
                                             lonp[j+1:iendloc,:], latp[j+1:iendloc,:], tp)
-                # pdb.set_trace()
                 fsle[i,:] += fsletemp
                 nnans[i,:] += nnanstemp
 
                 # NOT Now average all pairs starting at this unique location
                 # fsle = fsle/nnans
-        pdb.set_trace()
+            # pdb.set_trace()
+        # pdb.set_trace()
         # save: fsle in time, averaged over all combinations of drifters starting at
         # a unique river input point for a unique starting time
         np.savez(fname, fsle=fsle, nnans=nnans, Rs=Rs)
