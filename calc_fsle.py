@@ -160,7 +160,7 @@ def run():
     loc = 'http://barataria.tamu.edu:8080/thredds/dodsC/NcML/txla_nesting6.nc'
     grid = tracpy.inout.readgrid(loc)
 
-    Files = glob('tracks/2008-*gc.nc')
+    Files = glob('tracks/2008-08-*gc.nc')
 
     for File in Files:
 
