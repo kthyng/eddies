@@ -35,9 +35,9 @@ dd = 1 #500 # drifter decimation
 # '2007-05-30T12', '2007-05-15T12', '2007-05-01T12'
 # '2008-05-30T12', '2008-05-15T12', '2008-05-01T12'
 # Read in groups of start dates of simulations for better representation
-startdates = '2008-05-??T00'
-files = glob.glob('tracks/' + startdates + 'gc.nc')
-d = netCDF.MFDataset(files)
+startdate = '2008-05-30T12'
+file = 'tracks/' + startdate + 'gc.nc'
+d = netCDF.Dataset(file)
 xg = d.variables['xg'][::dd,:]
 yg = d.variables['yg'][::dd,:]
 ind = (xg == -1)
