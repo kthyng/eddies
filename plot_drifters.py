@@ -48,6 +48,10 @@ tp = d.variables['tp'][:]
 
 color = (0.03137255,  0.30191466,  0.58840448) # the almost dark blue from Blues
 
+dirname = 'figures/drifters/' + startdate
+if not os.path.exists(dirname):
+    os.makedirs(dirname)
+
 # Plot drifters, starting 5 days into simulation
 # 2 days for one tail, 3 days for other tail
 # t = tp-tp[0]
